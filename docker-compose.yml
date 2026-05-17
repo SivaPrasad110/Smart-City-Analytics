@@ -1,0 +1,124 @@
+# Smart City Analytics - Main Docker Compose
+# Root-level orchestration for full deployment
+# Usage: docker-compose up -d
+
+version: '3.8'
+
+services:
+  # ===========================================
+  # POSTGRESQL DATABASE
+  # ===========================================
+  db:
+    image: postgres:15-alpine
+    container_name: smartcity-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: smartcity
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-smartcity_secure_pass_2024}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    networks:
+      - smartcity-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d smartcity"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ===========================================
+  # BACKEND API - FastAPI
+  # ===========================================
+  backend:
+    build:
+      context: ./phase3_backend
+      dockerfile: ../docker/backend.Dockerfile
+    container_name: smartcity-backend
+    restart: unless-stopped
+    environment:
+      - ENVIRONMENT=production
+      - DATABASE_URL=postgresql://postgres:${DB_PASSWORD:-smartcity_secure_pass_2024}@db:5432/smartcity
+      - SECRET_KEY=${SECRET_KEY:-super-secret-key-change-me-in-production-at-least-32-chars-long}
+      - JWT_SECRET=${JWT_SECRET:-jwt-secret-change-me-in-production}
+      - DEBUG=false
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - smartcity-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ===========================================
+  # FRONTEND - React Application
+  # ===========================================
+  frontend:
+    build:
+      context: ./phase3_frontend
+      dockerfile: ../docker/frontend.Dockerfile
+    container_name: smartcity-frontend
+    restart: unless-stopped
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+      - REACT_APP_MAP_TILE_URL=https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png
+      - NODE_ENV=production
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - smartcity-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# ===========================================
+# NETWORKS
+# ===========================================
+networks:
+  smartcity-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.28.0.0/16
+
+# ===========================================
+# VOLUMES
+# ===========================================
+volumes:
+  postgres_data:
+    driver: local

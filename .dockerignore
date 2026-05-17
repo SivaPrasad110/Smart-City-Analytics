@@ -1,0 +1,75 @@
+# Docker ignore files
+# Smart City Analytics
+
+# Git
+.git
+.gitignore
+
+# Node modules
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv
+venv/
+ENV/
+env/
+.env
+.env.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+*.whl
+
+# Test coverage
+coverage/
+htmlcov/
+.coverage
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Docker specific
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# Documentation source
+*.md
+!requirements*.md
+
+# Screenshots (keep final screenshots)
+screenshots/*
+!screenshots/.gitkeep
+
+# Temporary files
+tmp/
+temp/
+.cache/
